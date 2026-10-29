@@ -26,7 +26,6 @@ if __name__ == '__main__':
     args = parser.parse_args()
 
     kit = ServoKit(channels=16)
-    sleep(0.1)
     kit.servo[args.motor_index].actuation_range = 300
     kit.servo[args.motor_index].set_pulse_width_range(500, 2500)
     kit.servo[args.motor_index].angle = args.target_angle
