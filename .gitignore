@@ -4,3 +4,8 @@ ROS/osr_bringup/config/*_mod.yaml
 *.sublime-project
 *.sublime-workspace
 .DS_Store
+# local build output and virtualenv
+build/
+install/
+log/
+venv/
