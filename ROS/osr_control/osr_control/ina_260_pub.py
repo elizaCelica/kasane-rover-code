@@ -47,10 +47,30 @@ class INA260Node(Node):
                 self.get_logger().debug(f"Updated timer to run at {self.publish_rate} Hz")
         return SetParametersResult(successful=True, reason="OK")
 
+    def read_ina(self, tries=30):
+        # This I2C bus drops the first transaction after idle time:
+        # throwaway read, instant retry on failure, then the real read.
+        for _ in range(tries):
+            try:
+                self.ina260.voltage()
+                voltage = self.ina260.voltage()
+                current = self.ina260.current()
+            except OSError:
+                continue
+            # A running rover never reads ~0 V; zeros mean a garbled read.
+            if voltage > 1.0:
+                return voltage, current
+        raise OSError("INA260 read failed after retries")
+
     def publish_data(self):
+        try:
+            voltage, current = self.read_ina()
+        except OSError as e:
+            self.get_logger().warning(f"Skipping battery reading: {e}", throttle_duration_sec=10)
+            return
         battery_msg = BatteryState()
-        battery_msg.voltage = self.ina260.voltage()
-        battery_msg.current = -self.ina260.current()
+        battery_msg.voltage = voltage
+        battery_msg.current = -current
         battery_msg.power_supply_status = BatteryState.POWER_SUPPLY_STATUS_UNKNOWN  # Assuming unknown status
         battery_msg.power_supply_technology = BatteryState.POWER_SUPPLY_TECHNOLOGY_LIPO  # Assuming LiPo technology
 
