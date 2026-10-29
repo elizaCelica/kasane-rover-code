@@ -2,7 +2,7 @@
 
 My build of NASA JPL's [Open Source Rover](https://github.com/nasa-jpl/osr-rover-code), running on a
 **Raspberry Pi 5 · Ubuntu 24.04 · ROS 2 Jazzy**, driven with a **PS5 DualSense** controller.
-   ![Kasane Rover driving](media/rover-driving.gif)
+   ![Kasane Rover driving](rover-driving.gif)
 
 https://github.com/user-attachments/assets/b4edb673-6a59-47c4-974d-68372bda73e9
 
