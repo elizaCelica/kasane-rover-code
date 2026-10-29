@@ -92,6 +92,12 @@ class RoboclawWrapper(Node):
         self.roboclaw_mapping["drive_right_front"]["gear_ratio"] = self.get_parameter('roboclaw_mapping.drive_right_front.gear_ratio').get_parameter_value().double_value
         self.roboclaw_mapping["drive_right_middle"]["gear_ratio"] = self.get_parameter('roboclaw_mapping.drive_right_middle.gear_ratio').get_parameter_value().double_value
         self.roboclaw_mapping["drive_right_back"]["gear_ratio"] = self.get_parameter('roboclaw_mapping.drive_right_back.gear_ratio').get_parameter_value().double_value
+        # Temporary software direction flip (proper fix: RoboClaw M1/M2 Reverse in Motion Studio)
+        self.declare_parameter('inverted_motors', [''])
+        for motor_name in self.get_parameter('inverted_motors').get_parameter_value().string_array_value:
+            if motor_name in self.roboclaw_mapping:
+                self.roboclaw_mapping[motor_name]["invert"] = True
+                self.get_logger().info(f"Inverting direction of {motor_name}")
 
         self.encoder_limits = {}
         self.establish_roboclaw_connections()
@@ -238,6 +244,10 @@ class RoboclawWrapper(Node):
             position = self.read_encoder_position(properties["address"], properties["channel"])
             velocity = self.read_encoder_velocity(properties["address"], properties["channel"])
             current = self.read_encoder_current(properties["address"], properties["channel"])
+            if properties.get("invert"):
+                velocity = -velocity
+                if isinstance(position, (int, float)):
+                    position = -position
             enc_msg.position.append(self.tick2position(position,
                                                        self.encoder_limits[motor_name][0],
                                                        self.encoder_limits[motor_name][1],
@@ -265,27 +275,27 @@ class RoboclawWrapper(Node):
         """
         props = self.roboclaw_mapping["drive_left_front"]
         vel_cmd = self.velocity2qpps(cmd.left_front_vel, props["ticks_per_rev"], props["gear_ratio"])
-        self.send_velocity_cmd(props["address"], props["channel"], vel_cmd)
+        self.send_velocity_cmd(props["address"], props["channel"], -vel_cmd if props.get("invert") else vel_cmd)
 
         props = self.roboclaw_mapping["drive_left_middle"]
         vel_cmd = self.velocity2qpps(cmd.left_middle_vel, props["ticks_per_rev"], props["gear_ratio"])
-        self.send_velocity_cmd(props["address"], props["channel"], vel_cmd)
+        self.send_velocity_cmd(props["address"], props["channel"], -vel_cmd if props.get("invert") else vel_cmd)
 
         props = self.roboclaw_mapping["drive_left_back"]
         vel_cmd = self.velocity2qpps(cmd.left_back_vel, props["ticks_per_rev"], props["gear_ratio"])
-        self.send_velocity_cmd(props["address"], props["channel"], vel_cmd)
+        self.send_velocity_cmd(props["address"], props["channel"], -vel_cmd if props.get("invert") else vel_cmd)
 
         props = self.roboclaw_mapping["drive_right_back"]
         vel_cmd = self.velocity2qpps(cmd.right_back_vel, props["ticks_per_rev"], props["gear_ratio"])
-        self.send_velocity_cmd(props["address"], props["channel"], vel_cmd)
+        self.send_velocity_cmd(props["address"], props["channel"], -vel_cmd if props.get("invert") else vel_cmd)
 
         props = self.roboclaw_mapping["drive_right_middle"]
         vel_cmd = self.velocity2qpps(cmd.right_middle_vel, props["ticks_per_rev"], props["gear_ratio"])
-        self.send_velocity_cmd(props["address"], props["channel"], vel_cmd)
+        self.send_velocity_cmd(props["address"], props["channel"], -vel_cmd if props.get("invert") else vel_cmd)
 
         props = self.roboclaw_mapping["drive_right_front"]
         vel_cmd = self.velocity2qpps(cmd.right_front_vel, props["ticks_per_rev"], props["gear_ratio"])
-        self.send_velocity_cmd(props["address"], props["channel"], vel_cmd)
+        self.send_velocity_cmd(props["address"], props["channel"], -vel_cmd if props.get("invert") else vel_cmd)
 
     def read_encoder_position(self, address, channel):
         """Wrapper around self.rc.ReadEncM1 and self.rcReadEncM2 to simplify code"""
