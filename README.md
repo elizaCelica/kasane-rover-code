@@ -2,13 +2,10 @@
 
 My build of NASA JPL's [Open Source Rover](https://github.com/nasa-jpl/osr-rover-code), running on a
 **Raspberry Pi 5 · Ubuntu 24.04 · ROS 2 Jazzy**, driven with a **PS5 DualSense** controller.
-   ![Kasane Rover driving](rover-driving.gif)
-
-https://github.com/user-attachments/assets/b4edb673-6a59-47c4-974d-68372bda73e9
-
-
 
 Hardware build and modifications: [kasane-rover-hardware](https://github.com/elizaCelica/kasane-rover-hardware)
+
+   ![Kasane Rover driving](rover-driving.gif)
 
 ## What I changed
 
@@ -25,6 +22,10 @@ Hardware build and modifications: [kasane-rover-hardware](https://github.com/eli
 - **Boot service.** The rover starts on power-up — press the PS button and drive.
 
 Setup steps outside the ROS workspace are in [`pi_setup/`](pi_setup/README.md).
+
+
+https://github.com/user-attachments/assets/b4edb673-6a59-47c4-974d-68372bda73e9
+
 
 ---
 
