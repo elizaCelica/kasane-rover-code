@@ -1,0 +1,16 @@
+[Unit]
+Description=Open Source Rover
+After=bluetooth.target
+
+[Service]
+User=eliza
+WorkingDirectory=/home/eliza
+Environment=LG_WD=/home/eliza
+ExecStart=/home/eliza/osr_ws/start_rover.sh
+Restart=on-failure
+RestartSec=5
+KillSignal=SIGINT
+TimeoutStopSec=15
+
+[Install]
+WantedBy=multi-user.target
