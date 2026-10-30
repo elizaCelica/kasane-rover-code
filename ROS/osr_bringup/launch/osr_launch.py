@@ -147,6 +147,19 @@ def generate_launch_description():
     #     )
     # )
 
+    # Foxglove bridge: streams this robot's topics over WebSocket (port 8765)
+    # so the Foxglove app on another computer can show live dashboards.
+    ld.add_action(
+        Node(
+            package='foxglove_bridge',
+            executable='foxglove_bridge',
+            name='foxglove_bridge',
+            output='screen',
+            respawn=True,
+            parameters=[{'port': 8765}],
+        )
+    )
+
     # Run every node under one robot namespace (default /kasane) so topics, services and
     # node names stay separate when more robots join the same ROS 2 network.
     # Override with: ros2 launch osr_bringup osr_launch.py namespace:=other_name
