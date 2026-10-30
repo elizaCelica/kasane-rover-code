@@ -10,15 +10,6 @@
 
   <buildtool_depend>ament_cmake</buildtool_depend>
 
-  <build_depend>geometry_msgs</build_depend>
-  <build_depend>rclcpp</build_depend>
-  <build_depend>rclcpp_action</build_depend>
-  <build_depend>std_msgs</build_depend>
-  <build_depend>sensor_msgs</build_depend>
-  <build_depend>nav_msgs</build_depend>
-  <build_depend>tf2_geometry_msgs</build_depend>
-  <build_depend>trajectory_msgs</build_depend>
-
   <exec_depend>ament_index_python</exec_depend>
   <exec_depend>effort_controllers</exec_depend>
   <exec_depend>geometry_msgs</exec_depend>
@@ -28,18 +19,18 @@
   <exec_depend>joint_trajectory_controller</exec_depend>
   <exec_depend>launch</exec_depend>
   <exec_depend>launch_ros</exec_depend>
+  <exec_depend>osr_bringup</exec_depend>
+  <exec_depend>osr_control</exec_depend>
+  <exec_depend>osr_interfaces</exec_depend>
+  <exec_depend>rclpy</exec_depend>
   <exec_depend>robot_state_publisher</exec_depend>
   <exec_depend>ros2_control</exec_depend>
   <exec_depend>ros2_controllers</exec_depend>
-  <exec_depend>rclcpp</exec_depend>
   <exec_depend>std_msgs</exec_depend>
+  <exec_depend>trajectory_msgs</exec_depend>
   <exec_depend>velocity_controllers</exec_depend>
   <exec_depend>xacro</exec_depend>
-  <exec_depend>std_msgs</exec_depend>
   <exec_depend>sensor_msgs</exec_depend>
-  <exec_depend>nav_msgs</exec_depend>
-  <exec_depend>tf2_geometry_msgs</exec_depend>
-  <exec_depend>trajectory_msgs</exec_depend>
   <exec_depend>joint_state_publisher_gui</exec_depend>
 
   <test_depend>ament_cmake_gtest</test_depend>
