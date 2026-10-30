@@ -26,7 +26,7 @@ Ubuntu has no `/dev/serial0` alias, so `roboclaw_params.yaml` uses `/dev/ttyAMA0
     sudo systemctl daemon-reload && sudo systemctl enable --now osr
 
 `WorkingDirectory`/`LG_WD` must point somewhere writable: lgpio (used by
-adafruit-blinka) creates pipe files in the working directory, and the servo node
+adafruit-blinka) creates pipe files in the working directory, and the servo nodes
 crashes if the service runs from `/`.
 
 Stop the service (`sudo systemctl stop osr`) before running scripts or a manual launch.
