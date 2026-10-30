@@ -1,9 +1,9 @@
 import os
 
 from launch import LaunchDescription
-from launch.actions import DeclareLaunchArgument
+from launch.actions import DeclareLaunchArgument, GroupAction
 from launch.substitutions import LaunchConfiguration
-from launch_ros.actions import Node
+from launch_ros.actions import Node, PushRosNamespace
 from ament_index_python.packages import get_package_share_directory
 
 
@@ -103,7 +103,7 @@ def generate_launch_description():
                 {"enable_turbo_button": 5}  # R1 on a DualSense: hold for turbo; -1 to disable
             ],
             remappings=[
-                ('/cmd_vel', '/cmd_vel_intuitive')
+                ('cmd_vel', 'cmd_vel_intuitive')
             ]
         )
     )
@@ -147,4 +147,14 @@ def generate_launch_description():
     #     )
     # )
 
-    return ld
+    # Run every node under one robot namespace (default /kasane) so topics, services and
+    # node names stay separate when more robots join the same ROS 2 network.
+    # Override with: ros2 launch osr_bringup osr_launch.py namespace:=other_name
+    launch_args = [e for e in ld.entities if isinstance(e, DeclareLaunchArgument)]
+    robot_actions = [e for e in ld.entities if not isinstance(e, DeclareLaunchArgument)]
+    return LaunchDescription(
+        [DeclareLaunchArgument('namespace', default_value='kasane',
+                               description='ROS namespace for this robot')]
+        + launch_args
+        + [GroupAction([PushRosNamespace(LaunchConfiguration('namespace'))] + robot_actions)]
+    )

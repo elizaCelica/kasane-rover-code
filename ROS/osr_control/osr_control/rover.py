@@ -73,20 +73,20 @@ class Rover(Node):
         self.curr_twist = TwistWithCovariance()
         self.curr_turning_radius = self.max_radius
 
-        self.cmd_vel_sub = self.create_subscription(Twist, "/cmd_vel",
+        self.cmd_vel_sub = self.create_subscription(Twist, "cmd_vel",
                                                     partial(self.cmd_cb, intuitive=False), 1)
-        self.cmd_vel_int_sub = self.create_subscription(Twist, "/cmd_vel_intuitive",
+        self.cmd_vel_int_sub = self.create_subscription(Twist, "cmd_vel_intuitive",
                                                         partial(self.cmd_cb, intuitive=True), 1)
-        self.drive_enc_sub = self.create_subscription(JointState, "/drive_state", self.enc_cb, 1)
-        self.corner_enc_sub = self.create_subscription(JointState, "/corner_state", self.enc_cb, 1)
+        self.drive_enc_sub = self.create_subscription(JointState, "drive_state", self.enc_cb, 1)
+        self.corner_enc_sub = self.create_subscription(JointState, "corner_state", self.enc_cb, 1)
 
-        self.turning_radius_pub = self.create_publisher(Float64, "/turning_radius", 1)
+        self.turning_radius_pub = self.create_publisher(Float64, "turning_radius", 1)
         if self.should_calculate_odom:
-            self.odometry_pub = self.create_publisher(Odometry, "/odom", 2)
+            self.odometry_pub = self.create_publisher(Odometry, "odom", 2)
             self.tf_pub = tf2_ros.TransformBroadcaster(self)
 
-        self.corner_cmd_pub = self.create_publisher(CommandCorner, "/cmd_corner", 1)
-        self.drive_cmd_pub = self.create_publisher(CommandDrive, "/cmd_drive", 1)
+        self.corner_cmd_pub = self.create_publisher(CommandCorner, "cmd_corner", 1)
+        self.drive_cmd_pub = self.create_publisher(CommandDrive, "cmd_drive", 1)
 
     @staticmethod
     def _to_drive_msg(cmd: DriveCommand) -> CommandDrive:

@@ -24,8 +24,9 @@ class PCA9685Interface(Node):
         self.pca = None
 
         # Ensure only one PCA9685 interface exists
-        node_names = self.get_node_names()
-        matching_nodes = [n for n in node_names if n == self.get_name()]
+        # compare name AND namespace, so the same node can run on several robots
+        matching_nodes = [n for n in self.get_node_names_and_namespaces()
+                          if n == (self.get_name(), self.get_namespace())]
         
         if len(matching_nodes) > 1:
             self.log.error(f"Instance of {self.get_name()} already exists! Shutting down.")
@@ -35,7 +36,7 @@ class PCA9685Interface(Node):
         self.channel_params = self.get_parameters_by_prefix('channel_mapping')
         self.params_to_dict()
 
-        self.cmd_pca_sub = self.create_subscription(CommandPWM, "/cmd_pwm", self.pca9685_cmd_cb, 10)
+        self.cmd_pca_sub = self.create_subscription(CommandPWM, "cmd_pwm", self.pca9685_cmd_cb, 10)
 
         # Keep track of last-commanded signal for each channel to avoid commanding the same duty cycle over and over
         self.last_signal = [None] * 16

@@ -1,4 +1,4 @@
-rover:
+/**/rover:  # matches this node in any namespace (e.g. /kasane/rover)
   ros__parameters:
     rover_dimensions:
       d1: 0.177  # [m]

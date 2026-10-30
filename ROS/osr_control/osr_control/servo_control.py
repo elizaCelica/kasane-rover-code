@@ -27,8 +27,9 @@ class ServoWrapper(Node):
         )
 
         # Ensure only one servo wrapper exists
-        node_names = self.get_node_names()
-        matching_nodes = [n for n in node_names if n == self.get_name()]
+        # compare name AND namespace, so the same node can run on several robots
+        matching_nodes = [n for n in self.get_node_names_and_namespaces()
+                          if n == (self.get_name(), self.get_namespace())]
         
         if len(matching_nodes) > 1:
             self.log.error(f"Instance of {self.get_name()} already exists! Shutting down.")
@@ -44,10 +45,10 @@ class ServoWrapper(Node):
 
         self.servo_cmd_msg = CommandPWM()
 
-        self.enc_pub = self.create_publisher(JointState, "/corner_state", 1)
-        self.servo_pub = self.create_publisher(CommandPWM, "/cmd_pwm", 10)  # 4 corner commands go out back to back; depth 1 can drop some
+        self.enc_pub = self.create_publisher(JointState, "corner_state", 1)
+        self.servo_pub = self.create_publisher(CommandPWM, "cmd_pwm", 10)  # 4 corner commands go out back to back; depth 1 can drop some
 
-        self.corner_cmd_sub = self.create_subscription(CommandCorner, "/cmd_corner", self.corner_cmd_cb, 1)
+        self.corner_cmd_sub = self.create_subscription(CommandCorner, "cmd_corner", self.corner_cmd_cb, 1)
         self.enc_pub_timer_period = 0.1  # [s]
         self.servo_direction = -1  # set to 1 if the servos are positive pwm clockwise
         self.enc_pub_timer = self.create_timer(self.enc_pub_timer_period, self.publish_encoder_estimate)

@@ -17,7 +17,7 @@ class JoyButtonSubscriber(Node):
         self.last_duty_mode_value = False
         self.last_received_time = None        
         self.cb_group = ReentrantCallbackGroup()
-        self.roboclaw_node_set_param_client = self.create_client(SetParameters, '/roboclaw_wrapper/set_parameters', 
+        self.roboclaw_node_set_param_client = self.create_client(SetParameters, 'roboclaw_wrapper/set_parameters', 
                                                                  callback_group=self.cb_group)
         while not self.roboclaw_node_set_param_client.wait_for_service(timeout_sec=5.0):
             self.log.info('Service /roboclaw_wrapper/set_parameters not available, waiting again...', skip_first=True)

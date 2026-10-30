@@ -126,9 +126,9 @@ class RoboclawWrapper(Node):
         self.stop_motors()
 
         # set up publishers and subscribers
-        self.drive_cmd_sub = self.create_subscription(CommandDrive, "/cmd_drive", self.drive_cmd_cb, 1)
-        self.enc_pub = self.create_publisher(JointState, "/drive_state", 1)
-        self.status_pub = self.create_publisher(Status, "/status", 1)
+        self.drive_cmd_sub = self.create_subscription(CommandDrive, "cmd_drive", self.drive_cmd_cb, 1)
+        self.enc_pub = self.create_publisher(JointState, "drive_state", 1)
+        self.status_pub = self.create_publisher(Status, "status", 1)
 
         self.status = Status()
         fast_loop_rate = 0.125  # seconds

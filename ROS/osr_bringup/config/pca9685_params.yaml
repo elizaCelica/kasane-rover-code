@@ -1,4 +1,4 @@
-pca9685_interface:
+/**/pca9685_interface:  # matches this node in any namespace
   ros__parameters:
     channel_mapping:
       # channel: integer 0-15
