@@ -1,4 +1,7 @@
 import rclpy
+import subprocess
+import time
+from collections import deque
 from rclpy.node import Node
 from rclpy.qos import QoSProfile
 from rcl_interfaces.msg import SetParametersResult
@@ -15,6 +18,7 @@ class INA260Node(Node):
         # Initialize parameters
         self.declare_parameter('sensor_address', "0x45")
         self.declare_parameter('publish_rate', 2.0)
+        self.setup_battery_protection()
 
         # Get parameter values
         self.sensor_address = self.get_parameter('sensor_address').get_parameter_value().string_value
@@ -71,11 +75,55 @@ class INA260Node(Node):
         battery_msg = BatteryState()
         battery_msg.voltage = voltage
         battery_msg.current = -current
+        self.check_battery(voltage)
         battery_msg.power_supply_status = BatteryState.POWER_SUPPLY_STATUS_UNKNOWN  # Assuming unknown status
         battery_msg.power_supply_technology = BatteryState.POWER_SUPPLY_TECHNOLOGY_LIPO  # Assuming LiPo technology
 
         # Publish BatteryState message
         self.battery_state_pub.publish(battery_msg)
+
+
+    def setup_battery_protection(self):
+        # 4S LiPo: warn ~3.2 V/cell, shut down ~3.0 V/cell. Readings are averaged
+        # and must stay low for a while, so voltage sag while driving doesn't trigger it.
+        self.declare_parameter('low_voltage_warn', 12.8)
+        self.declare_parameter('low_voltage_shutdown', 12.0)
+        self.declare_parameter('low_voltage_hold_sec', 10.0)
+        self.declare_parameter('shutdown_dry_run', False)
+        self.v_warn = float(self.get_parameter('low_voltage_warn').value)
+        self.v_shutdown = float(self.get_parameter('low_voltage_shutdown').value)
+        self.v_hold = float(self.get_parameter('low_voltage_hold_sec').value)
+        self.shutdown_dry_run = bool(self.get_parameter('shutdown_dry_run').value)
+        self.v_history = deque(maxlen=10)
+        self.below_shutdown_since = None
+        self.shutdown_requested = False
+        self.get_logger().info(
+            f"Battery protection: warn < {self.v_warn:.1f} V, power off < {self.v_shutdown:.1f} V "
+            f"for {self.v_hold:.0f} s" + (" (DRY RUN)" if self.shutdown_dry_run else ""))
+
+    def check_battery(self, voltage):
+        self.v_history.append(voltage)
+        avg = sum(self.v_history) / len(self.v_history)
+        now = time.monotonic()
+        if avg < self.v_shutdown:
+            if self.below_shutdown_since is None:
+                self.below_shutdown_since = now
+            held = now - self.below_shutdown_since
+            self.get_logger().error(
+                f"Battery critical: {avg:.2f} V (below {self.v_shutdown:.1f} V for {held:.0f} s)",
+                throttle_duration_sec=5)
+            if held >= self.v_hold and not self.shutdown_requested:
+                self.shutdown_requested = True
+                if self.shutdown_dry_run:
+                    self.get_logger().error("DRY RUN: would power off the Pi now to protect the battery")
+                else:
+                    self.get_logger().fatal("Powering off to protect the battery. Unplug it and recharge.")
+                    subprocess.Popen(["sudo", "-n", "/usr/bin/systemctl", "poweroff"])
+        else:
+            self.below_shutdown_since = None
+            if avg < self.v_warn:
+                self.get_logger().warning(f"Battery low: {avg:.2f} V. Recharge soon.",
+                                          throttle_duration_sec=30)
 
 def main(args=None):
     rclpy.init(args=args)

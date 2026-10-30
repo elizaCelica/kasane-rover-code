@@ -34,3 +34,14 @@ Logs: `journalctl -u osr -f`
 
 ## Controller
 DualSense over Bluetooth: pair, then `bluetoothctl trust <MAC>` so it reconnects on PS-button press.
+
+## Low-battery shutdown
+The INA260 node powers off the Pi if the battery stays below 12.0 V (3.0 V/cell) for 10 s,
+and warns below 12.8 V. It needs permission to run `systemctl poweroff` without a password:
+
+    echo 'eliza ALL=(root) NOPASSWD: /usr/bin/systemctl poweroff' | sudo tee /etc/sudoers.d/osr-poweroff
+    sudo chmod 440 /etc/sudoers.d/osr-poweroff
+    sudo visudo -cf /etc/sudoers.d/osr-poweroff   # must say "parsed OK"
+
+Test without powering off:
+`ros2 run osr_control ina260 --ros-args -p low_voltage_warn:=20.0 -p low_voltage_shutdown:=19.0 -p shutdown_dry_run:=true`
