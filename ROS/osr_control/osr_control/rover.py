@@ -126,7 +126,10 @@ class Rover(Node):
 
         :param intuitive: determines the mode
         """
-        if twist_msg.angular.y and not twist_msg.linear.x:
+        # Spin in place when the sideways push clearly outweighs any forward/back drift.
+        # (Upstream required linear.x to be exactly 0, but a thumb pushing the stick
+        # sideways usually drifts up or down a bit, so rotation rarely triggered.)
+        if twist_msg.angular.y and abs(twist_msg.linear.x) < 0.5 * abs(twist_msg.angular.y):
             corner_cmd, drive_cmd = self.kin.calculate_rotate_in_place_cmd(twist_msg.angular.y)
             corner_cmd_msg = self._to_corner_msg(corner_cmd)
             drive_cmd_msg = self._to_drive_msg(drive_cmd)
