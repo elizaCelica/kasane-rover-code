@@ -67,6 +67,10 @@ ros2 launch osr_gazebo harmonic_world.launch.py joystick:=true
 
 Check the controllers with `ros2 control list_controllers`.
 
+### Sensors and worlds
+
+The Harmonic model carries a 2D LiDAR (`/scan`, frame `laser`, 360 samples, 10 Hz, 0.3–12 m) and an IMU (`/imu`, frame `imu_link`, 100 Hz), defined in `urdf/sensors_harmonic.xacro`. The default world, `worlds/test_room.sdf`, is a 6 m × 6 m walled room with a few obstacles. Any world must load the `Sensors` and `Imu` systems for the sensors to publish. Choose another world with `world:=<path>`.
+
 ### Troubleshooting
 
 - **Gazebo window freezes, or the terminal hangs at "Requesting list of world names"**: Gazebo's transport discovery is being blocked, often by a firewall (e.g. `ufw`) on the network interface. Keep Gazebo on the local machine with `export GZ_IP=127.0.0.1` (add it to `~/.bashrc` to make it permanent).
@@ -75,7 +79,6 @@ Check the controllers with `ros2 control list_controllers`.
 
 - **Collision shapes**: Harmonic uses simple shapes for collisions (cylinders for the six drive wheels, a box for the body, none for the other links) instead of the detailed meshes, which kept the simulation at roughly half real time. Visuals still use the meshes. On flat ground only the wheels make contact; rough terrain would need boxes for the rocker-bogie links.
 - **Wheel size**: the wheel mesh is 164 mm × 101 mm, which appears to be the previously recommended Traxxas tires. The current parts list uses goBILDA Wasteland Wheels (144 mm × 52 mm), and `osr_params.yaml` uses `wheel_radius: 0.075`. The Harmonic launch overrides `wheel_radius` to 0.082 so commanded speeds match the simulated wheel.
-- No IMU sensor yet (the Classic IMU plugin is not ported).
 
 ## Gazebo Classic (ROS 2 Humble)
 

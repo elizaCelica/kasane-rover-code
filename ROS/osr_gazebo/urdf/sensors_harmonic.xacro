@@ -1,0 +1,74 @@
+<?xml version="1.0"?>
+<!-- Simulated sensors for Gazebo Harmonic: a 2D LiDAR on top of the body and an
+     IMU at the body center. The world must load the Sensors and Imu systems
+     (see worlds/test_room.sdf) or these produce no data.
+     Sensor settings follow the Zyldras/osr-code fork (RPLIDAR-like LiDAR). -->
+<robot xmlns:xacro="http://www.ros.org/wiki/xacro">
+
+    <material name="red">
+        <color rgba="0.8 0.1 0.1 1.0"/>
+    </material>
+
+    <!-- LiDAR mount: 10 cm forward of the body center, 12 cm above it, so the
+         scan plane clears the body and rocker-bogie -->
+    <joint name="laser_joint" type="fixed">
+        <parent link="base_link"/>
+        <child link="laser"/>
+        <origin xyz="0.10 0 0.12" rpy="0 0 0"/>
+    </joint>
+
+    <link name="laser">
+        <visual>
+            <geometry>
+                <cylinder radius="0.035" length="0.04"/>
+            </geometry>
+            <material name="red"/>
+        </visual>
+        <inertial>
+            <mass value="0.1"/>
+            <inertia ixx="4.4e-5" ixy="0" ixz="0" iyy="4.4e-5" iyz="0" izz="6.1e-5"/>
+        </inertial>
+    </link>
+
+    <!-- The fixed joint merges "laser" into base_link inside Gazebo, so
+         gz_frame_id keeps the scan labeled with the "laser" frame for ROS -->
+    <gazebo reference="laser">
+        <sensor name="laser" type="gpu_lidar">
+            <update_rate>10</update_rate>
+            <visualize>true</visualize>
+            <topic>scan</topic>
+            <gz_frame_id>laser</gz_frame_id>
+            <lidar>
+                <scan>
+                    <horizontal>
+                        <samples>360</samples>
+                        <resolution>1</resolution>
+                        <min_angle>-3.14159</min_angle>
+                        <max_angle>3.14159</max_angle>
+                    </horizontal>
+                </scan>
+                <range>
+                    <min>0.3</min>
+                    <max>12.0</max>
+                    <resolution>0.01</resolution>
+                </range>
+                <noise>
+                    <type>gaussian</type>
+                    <mean>0.0</mean>
+                    <stddev>0.01</stddev>
+                </noise>
+            </lidar>
+        </sensor>
+    </gazebo>
+
+    <!-- IMU on the existing imu_link (defined in osr.urdf.xacro) -->
+    <gazebo reference="imu_link">
+        <sensor name="imu_sensor" type="imu">
+            <always_on>true</always_on>
+            <update_rate>100</update_rate>
+            <topic>imu</topic>
+            <gz_frame_id>imu_link</gz_frame_id>
+        </sensor>
+    </gazebo>
+
+</robot>

@@ -560,6 +560,11 @@
 
     <link name="imu_link"></link>
 
+    <!-- LiDAR and IMU sensors for Gazebo Harmonic -->
+    <xacro:if value="${sim == 'harmonic'}">
+        <xacro:include filename="$(find osr_gazebo)/urdf/sensors_harmonic.xacro"/>
+    </xacro:if>
+
     <xacro:insert_velocity_transmission name="rear_wheel_joint_right"/>
     <xacro:insert_velocity_transmission name="rear_wheel_joint_left"/>
     <xacro:insert_velocity_transmission name="middle_wheel_joint_right"/>

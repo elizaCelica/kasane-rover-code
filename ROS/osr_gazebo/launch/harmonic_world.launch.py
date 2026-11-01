@@ -1,4 +1,4 @@
-"""Drive the rover in an empty Gazebo Harmonic world (ROS 2 Jazzy).
+"""Drive the rover in a Gazebo Harmonic world (ROS 2 Jazzy).
 
 Starts Gazebo, publishes the robot description, spawns the rover, bridges
 Gazebo's clock into ROS, and starts the ros2_control controllers that drive the
@@ -31,11 +31,14 @@ def generate_launch_description():
     robot_description = ParameterValue(
         Command(['xacro ', xacro_file, ' sim:=harmonic']), value_type=str)
 
-    # Gazebo Harmonic with its built-in empty world; -r starts the physics running
+    # Gazebo Harmonic; -r starts the physics running. The default world is a
+    # walled test room that also loads the Sensors/Imu systems the LiDAR and
+    # IMU need (Gazebo's built-in empty.sdf works too, but without sensor data).
+    world = LaunchConfiguration('world')
     gazebo = IncludeLaunchDescription(
         PythonLaunchDescriptionSource(
             PathJoinSubstitution([FindPackageShare('ros_gz_sim'), 'launch', 'gz_sim.launch.py'])),
-        launch_arguments={'gz_args': '-r empty.sdf'}.items(),
+        launch_arguments={'gz_args': ['-r ', world]}.items(),
     )
 
     # Publishes the URDF on /robot_description and the positions of the rover's parts (TF)
@@ -54,13 +57,20 @@ def generate_launch_description():
         arguments=['-topic', 'robot_description', '-name', 'rover', '-z', '0.05'],
     )
 
-    # Gazebo keeps its own simulated clock; bridge it to ROS /clock so nodes using
-    # use_sim_time follow simulation time
+    # Bridge Gazebo topics into ROS ("[" means Gazebo -> ROS only):
+    #  - /clock: Gazebo's simulated time, followed by nodes with use_sim_time
+    #  - /scan:  LiDAR sweeps (sensor_msgs/LaserScan)
+    #  - /imu:   IMU orientation, angular velocity, acceleration
     clock_bridge = Node(
         package='ros_gz_bridge',
         executable='parameter_bridge',
         output='screen',
-        arguments=['/clock@rosgraph_msgs/msg/Clock[gz.msgs.Clock'],
+        arguments=[
+            '/clock@rosgraph_msgs/msg/Clock[gz.msgs.Clock',
+            '/scan@sensor_msgs/msg/LaserScan[gz.msgs.LaserScan',
+            '/imu@sensor_msgs/msg/Imu[gz.msgs.IMU',
+        ],
+        parameters=[{'use_sim_time': True}],
     )
 
     # Start the controllers once the rover (and its controller_manager) exists.
@@ -143,6 +153,11 @@ def generate_launch_description():
     return LaunchDescription([
         DeclareLaunchArgument('joystick', default_value='false',
                               description='Start joy + teleop_twist_joy for a gamepad'),
+        DeclareLaunchArgument(
+            'world',
+            default_value=PathJoinSubstitution(
+                [FindPackageShare('osr_gazebo'), 'worlds', 'test_room.sdf']),
+            description='World file to load (path, or a Gazebo built-in like empty.sdf)'),
         gazebo, robot_state_publisher, spawn, clock_bridge, controllers,
         rover, adapter, joy, teleop,
     ])

@@ -148,7 +148,7 @@
     </gazebo>
   </xacro:if>
 
-  <!-- Gazebo Classic IMU plugin; a Harmonic IMU sensor is a later step -->
+  <!-- Gazebo Classic IMU plugin (Harmonic sensors: sensors_harmonic.xacro) -->
   <xacro:if value="${sim == 'classic'}">
     <gazebo reference="imu_link">
         <gravity>true</gravity>
