@@ -40,6 +40,7 @@
   <exec_depend>joint_state_publisher_gui</exec_depend>
   <exec_depend>joy</exec_depend>
   <exec_depend>slam_toolbox</exec_depend>
+  <exec_depend>nav2_bringup</exec_depend>
   <exec_depend>teleop_twist_joy</exec_depend>
   <exec_depend>teleop_twist_keyboard</exec_depend>
 

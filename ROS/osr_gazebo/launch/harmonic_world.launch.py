@@ -16,6 +16,8 @@ or with a gamepad connected to this computer:
   ros2 launch osr_gazebo harmonic_world.launch.py joystick:=true
 Build a map while driving:
   ros2 launch osr_gazebo harmonic_world.launch.py slam:=true
+Navigate to goals clicked in RViz (2D Goal Pose) while mapping:
+  ros2 launch osr_gazebo harmonic_world.launch.py slam:=true nav2:=true
 """
 from launch import LaunchDescription
 from launch.actions import DeclareLaunchArgument, IncludeLaunchDescription
@@ -108,6 +110,8 @@ def generate_launch_description():
                 'enable_odometry': True,
                 'publish_transform': True,
                 'odom_child_frame': 'base_footprint',
+                # Nav2 asks for in-place rotation as a zero-speed yaw command
+                'rotate_in_place_on_yaw': True,
                 'use_sim_time': True,
             },
         ],
@@ -168,6 +172,20 @@ def generate_launch_description():
         condition=IfCondition(LaunchConfiguration('slam')),
     )
 
+    # Optional autonomous navigation: Nav2 plans a path to a goal (RViz "2D Goal
+    # Pose") and drives along it via /cmd_vel. Needs a map: use with slam:=true.
+    nav2 = IncludeLaunchDescription(
+        PythonLaunchDescriptionSource(
+            PathJoinSubstitution([FindPackageShare('nav2_bringup'), 'launch', 'navigation_launch.py'])),
+        launch_arguments={
+            'params_file': PathJoinSubstitution(
+                [FindPackageShare('osr_gazebo'), 'config', 'nav2_params_harmonic.yaml']),
+            'use_sim_time': 'true',
+            'autostart': 'true',
+        }.items(),
+        condition=IfCondition(LaunchConfiguration('nav2')),
+    )
+
     return LaunchDescription([
         DeclareLaunchArgument('joystick', default_value='false',
                               description='Start joy + teleop_twist_joy for a gamepad'),
@@ -179,5 +197,7 @@ def generate_launch_description():
         gazebo, robot_state_publisher, spawn, clock_bridge, controllers,
         DeclareLaunchArgument('slam', default_value='false',
                               description='Start slam_toolbox to build a map'),
-        rover, adapter, joy, teleop, slam,
+        DeclareLaunchArgument('nav2', default_value='false',
+                              description='Start Nav2 (use with slam:=true)'),
+        rover, adapter, joy, teleop, slam, nav2,
     ])
