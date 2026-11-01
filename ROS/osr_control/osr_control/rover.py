@@ -61,12 +61,17 @@ class Rover(Node):
 
         self.should_calculate_odom = self.get_parameter("enable_odometry").get_parameter_value().bool_value
         self.should_publish_transform = self.get_parameter("publish_transform").get_parameter_value().bool_value
+        # Frame the odometry moves. base_link on the hardware; in simulation the
+        # URDF's root is base_footprint, so odom must attach there instead
+        # (a frame can only have one parent in TF).
+        self.odom_child_frame = self.declare_parameter(
+            "odom_child_frame", "base_link").get_parameter_value().string_value
         if self.should_calculate_odom:
             self.get_logger().info("Calculting wheel odometry and publishing to /odom topic")
             self.odometry = Odometry()
             self.odometry.header.stamp = self.get_clock().now().to_msg()
             self.odometry.header.frame_id = "odom"
-            self.odometry.child_frame_id = "base_link"
+            self.odometry.child_frame_id = self.odom_child_frame
             self.odometry.pose.pose.orientation.w = 1.
         self.curr_positions = {}
         self.curr_velocities = {}
@@ -181,7 +186,7 @@ class Rover(Node):
             if self.should_publish_transform:
                 transform_msg = TransformStamped()
                 transform_msg.header.frame_id = "odom"
-                transform_msg.child_frame_id = "base_link"
+                transform_msg.child_frame_id = self.odom_child_frame
                 transform_msg.header.stamp = now.to_msg()
                 transform_msg.transform.translation.x = self.odometry.pose.pose.position.x
                 transform_msg.transform.translation.y = self.odometry.pose.pose.position.y
@@ -229,20 +234,32 @@ class Rover(Node):
 
         if math.isnan(approx_turning_radius):
             approx_turning_radius = self.max_radius
+        # Corners (nearly) straight: tiny angles of mixed sign (sensor noise, servo
+        # jitter) would otherwise give huge radii of opposite signs whose average
+        # can land near zero and fake a sharp turn.
+        if max(abs(theta_fl), abs(theta_fr), abs(theta_bl), abs(theta_br)) < 0.01:
+            approx_turning_radius = self.max_radius
         self.get_logger().debug(
             "Current approximate turning radius: {}".format(round(approx_turning_radius, 2)),
             throttle_duration_sec=1)
         self.curr_turning_radius = approx_turning_radius
 
-        drive_angular_velocity = (
-            self.curr_velocities['drive_left_middle'] + self.curr_velocities['drive_right_middle']) / 2.
+        # Drive velocities use the motor convention, where the right-side motors are
+        # mirrored: negative means rolling forward (see kinematics.calculate_drive_velocities).
+        # Flip the right side so both sides are positive when the rover moves forward.
+        left_middle_vel = self.curr_velocities['drive_left_middle']
+        right_middle_vel = -self.curr_velocities['drive_right_middle']
+        drive_angular_velocity = (left_middle_vel + right_middle_vel) / 2.
         self.curr_twist.twist.linear.x = drive_angular_velocity * self.wheel_radius
         try:
-            self.curr_twist.twist.angular.z = self.curr_twist.twist.linear.x / self.curr_turning_radius
+            if abs(self.curr_turning_radius) >= self.max_radius:
+                # wheels (nearly) straight: driving straight, not a huge slow turn
+                self.curr_twist.twist.angular.z = 0.0
+            else:
+                self.curr_twist.twist.angular.z = self.curr_twist.twist.linear.x / self.curr_turning_radius
         except ZeroDivisionError:
             self.curr_twist.twist.linear.x = 0.0
-            drive_angular_velocity = (
-                self.curr_velocities['drive_left_middle'] - self.curr_velocities['drive_right_middle']) / 2.0
+            drive_angular_velocity = (right_middle_vel - left_middle_vel) / 2.0
             self.curr_twist.twist.angular.z = drive_angular_velocity * self.wheel_radius / self.d4
             self.get_logger().debug(
                 f"Turn-in-place detected. Angular velocity: {self.curr_twist.twist.angular.z}",
