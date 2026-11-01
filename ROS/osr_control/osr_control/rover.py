@@ -64,6 +64,10 @@ class Rover(Node):
         # Frame the odometry moves. base_link on the hardware; in simulation the
         # URDF's root is base_footprint, so odom must attach there instead
         # (a frame can only have one parent in TF).
+        # Turn zero-speed yaw commands on cmd_vel into rotation in place (for Nav2).
+        # Off by default; cmd_vel_intuitive (joystick) is never affected.
+        self.rotate_in_place_on_yaw = self.declare_parameter(
+            "rotate_in_place_on_yaw", False).get_parameter_value().bool_value
         self.odom_child_frame = self.declare_parameter(
             "odom_child_frame", "base_link").get_parameter_value().string_value
         if self.should_calculate_odom:
@@ -134,8 +138,16 @@ class Rover(Node):
         # Spin in place when the sideways push clearly outweighs any forward/back drift.
         # (Upstream required linear.x to be exactly 0, but a thumb pushing the stick
         # sideways usually drifts up or down a bit, so rotation rarely triggered.)
-        if twist_msg.angular.y and abs(twist_msg.linear.x) < 0.5 * abs(twist_msg.angular.y):
-            corner_cmd, drive_cmd = self.kin.calculate_rotate_in_place_cmd(twist_msg.angular.y)
+        spin_rate = twist_msg.angular.y
+        # Navigation stacks (Nav2) ask for rotation in place as a yaw rate with zero
+        # forward speed. In the mathematically correct mode that would otherwise do
+        # nothing, so optionally turn it into a rotate-in-place command.
+        # Sign: a positive angular.y rotate command spins clockwise (negative yaw).
+        if (not spin_rate and not intuitive and self.rotate_in_place_on_yaw
+                and abs(twist_msg.linear.x) < 1e-3 and abs(twist_msg.angular.z) > 1e-3):
+            spin_rate = -twist_msg.angular.z
+        if spin_rate and abs(twist_msg.linear.x) < 0.5 * abs(spin_rate):
+            corner_cmd, drive_cmd = self.kin.calculate_rotate_in_place_cmd(spin_rate)
             corner_cmd_msg = self._to_corner_msg(corner_cmd)
             drive_cmd_msg = self._to_drive_msg(drive_cmd)
         else:
