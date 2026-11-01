@@ -244,27 +244,19 @@ class Rover(Node):
             throttle_duration_sec=1)
         self.curr_turning_radius = approx_turning_radius
 
+        # Body twist from the two middle wheels. They don't steer and sit at
+        # +/- d4 from the centerline, so they behave like a differential drive:
+        #   v = (right + left) / 2,   w = (right - left) / (2 * d4)
+        # This holds for straight driving, arcs (kinematics gives them speeds
+        # (R -/+ d4) * w) and turning in place alike, without dividing by an
+        # estimated turning radius, which is unstable near straight and near zero.
         # Drive velocities use the motor convention, where the right-side motors are
         # mirrored: negative means rolling forward (see kinematics.calculate_drive_velocities).
         # Flip the right side so both sides are positive when the rover moves forward.
-        left_middle_vel = self.curr_velocities['drive_left_middle']
-        right_middle_vel = -self.curr_velocities['drive_right_middle']
-        drive_angular_velocity = (left_middle_vel + right_middle_vel) / 2.
-        self.curr_twist.twist.linear.x = drive_angular_velocity * self.wheel_radius
-        try:
-            if abs(self.curr_turning_radius) >= self.max_radius:
-                # wheels (nearly) straight: driving straight, not a huge slow turn
-                self.curr_twist.twist.angular.z = 0.0
-            else:
-                self.curr_twist.twist.angular.z = self.curr_twist.twist.linear.x / self.curr_turning_radius
-        except ZeroDivisionError:
-            self.curr_twist.twist.linear.x = 0.0
-            drive_angular_velocity = (right_middle_vel - left_middle_vel) / 2.0
-            self.curr_twist.twist.angular.z = drive_angular_velocity * self.wheel_radius / self.d4
-            self.get_logger().debug(
-                f"Turn-in-place detected. Angular velocity: {self.curr_twist.twist.angular.z}",
-                throttle_duration_sec=1)
-
+        left_middle_vel = self.curr_velocities['drive_left_middle'] * self.wheel_radius
+        right_middle_vel = -self.curr_velocities['drive_right_middle'] * self.wheel_radius
+        self.curr_twist.twist.linear.x = (left_middle_vel + right_middle_vel) / 2.0
+        self.curr_twist.twist.angular.z = (right_middle_vel - left_middle_vel) / (2.0 * self.d4)
 
 def main(args=None):
     rclpy.init(args=args)
