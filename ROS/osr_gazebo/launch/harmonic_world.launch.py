@@ -14,6 +14,8 @@ Drive it with the keyboard (in a second terminal):
   ros2 run teleop_twist_keyboard teleop_twist_keyboard --ros-args -r cmd_vel:=cmd_vel_intuitive
 or with a gamepad connected to this computer:
   ros2 launch osr_gazebo harmonic_world.launch.py joystick:=true
+Build a map while driving:
+  ros2 launch osr_gazebo harmonic_world.launch.py slam:=true
 """
 from launch import LaunchDescription
 from launch.actions import DeclareLaunchArgument, IncludeLaunchDescription
@@ -86,7 +88,7 @@ def generate_launch_description():
     )
 
     # The real rover's control node: turns a Twist into wheel speeds and corner
-    # angles. Odometry is off because the sim has no encoder feedback wired in.
+    # angles, and computes wheel odometry from the encoder states.
     # Dimensions come from the robot's osr_params.yaml, except the wheel radius,
     # which must match the simulated wheel (82 mm, the collision cylinder in
     # osr.urdf.xacro) so commanded speeds come out right whatever wheels the
@@ -100,8 +102,12 @@ def generate_launch_description():
             PathJoinSubstitution([FindPackageShare('osr_bringup'), 'config', 'osr_params.yaml']),
             {
                 'rover_dimensions.wheel_radius': 0.082,
-                'enable_odometry': False,
-                'publish_transform': False,
+                # Wheel odometry from the simulated encoders (drive_state /
+                # corner_state, republished by the adapter), attached to the
+                # URDF root so TF has one tree: odom -> base_footprint -> base_link
+                'enable_odometry': True,
+                'publish_transform': True,
+                'odom_child_frame': 'base_footprint',
                 'use_sim_time': True,
             },
         ],
@@ -150,6 +156,18 @@ def generate_launch_description():
         remappings=[('cmd_vel', 'cmd_vel_intuitive')],
     )
 
+    # Optional mapping: slam_toolbox builds /map from /scan and publishes map -> odom
+    slam = IncludeLaunchDescription(
+        PythonLaunchDescriptionSource(
+            PathJoinSubstitution([FindPackageShare('slam_toolbox'), 'launch', 'online_async_launch.py'])),
+        launch_arguments={
+            'slam_params_file': PathJoinSubstitution(
+                [FindPackageShare('osr_gazebo'), 'config', 'slam_toolbox_harmonic.yaml']),
+            'use_sim_time': 'true',
+        }.items(),
+        condition=IfCondition(LaunchConfiguration('slam')),
+    )
+
     return LaunchDescription([
         DeclareLaunchArgument('joystick', default_value='false',
                               description='Start joy + teleop_twist_joy for a gamepad'),
@@ -159,5 +177,7 @@ def generate_launch_description():
                 [FindPackageShare('osr_gazebo'), 'worlds', 'test_room.sdf']),
             description='World file to load (path, or a Gazebo built-in like empty.sdf)'),
         gazebo, robot_state_publisher, spawn, clock_bridge, controllers,
-        rover, adapter, joy, teleop,
+        DeclareLaunchArgument('slam', default_value='false',
+                              description='Start slam_toolbox to build a map'),
+        rover, adapter, joy, teleop, slam,
     ])

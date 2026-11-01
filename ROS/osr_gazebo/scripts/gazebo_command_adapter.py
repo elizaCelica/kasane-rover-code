@@ -11,11 +11,17 @@ Wheel speeds are ramped toward the commanded value at a limited acceleration,
 like the RoboClaws do on the real rover (drive_acceleration_factor). Without
 the ramp, the velocity controller changes wheel speed in a single physics step
 and the rover pitches and hops when it stops or reverses.
+
+In the other direction, the simulated joint states (/joint_states) are
+republished as drive_state and corner_state, with the names and sign
+conventions the RoboClaw and servo nodes use on the real rover, so rover.py's
+wheel odometry runs unchanged in simulation.
 """
 
 import rclpy
 from rclpy.node import Node
 
+from sensor_msgs.msg import JointState
 from std_msgs.msg import Float64MultiArray
 from trajectory_msgs.msg import JointTrajectory, JointTrajectoryPoint
 from osr_interfaces.msg import CommandCorner, CommandDrive
@@ -38,6 +44,23 @@ class GazeboCommandAdapter(Node):
         'rear_wheel_joint_L',
     )
 
+    # Simulated joint -> (hardware name, sign). Sign converts the Gazebo joint
+    # convention back to the hardware one (the inverse of the command mapping).
+    DRIVE_STATE_MAP = {
+        'front_wheel_joint_left': ('drive_left_front', 1.0),
+        'middle_wheel_joint_left': ('drive_left_middle', 1.0),
+        'rear_wheel_joint_left': ('drive_left_back', 1.0),
+        'front_wheel_joint_right': ('drive_right_front', -1.0),
+        'middle_wheel_joint_right': ('drive_right_middle', -1.0),
+        'rear_wheel_joint_right': ('drive_right_back', -1.0),
+    }
+    CORNER_STATE_MAP = {
+        'front_wheel_joint_L': ('corner_left_front', -1.0),
+        'rear_wheel_joint_L': ('corner_left_back', -1.0),
+        'front_wheel_joint_R': ('corner_right_front', -1.0),
+        'rear_wheel_joint_R': ('corner_right_back', -1.0),
+    }
+
     def __init__(self):
         super().__init__('gazebo_command_adapter')
         self.declare_parameter('trajectory_time_from_start', 0.2)
@@ -59,6 +82,11 @@ class GazeboCommandAdapter(Node):
         self.create_subscription(CommandDrive, '/cmd_drive', self.drive_cb, 1)
         self.create_subscription(CommandCorner, '/cmd_corner', self.corner_cb, 1)
 
+        # Simulated encoders: Gazebo joint states -> hardware-style state topics
+        self.drive_state_pub = self.create_publisher(JointState, '/drive_state', 1)
+        self.corner_state_pub = self.create_publisher(JointState, '/corner_state', 1)
+        self.create_subscription(JointState, '/joint_states', self.joint_states_cb, 10)
+
         rate = self.get_parameter('ramp_rate').get_parameter_value().double_value
         self.ramp_dt = 1.0 / rate
         self.create_timer(self.ramp_dt, self.ramp_cb)
@@ -76,6 +104,24 @@ class GazeboCommandAdapter(Node):
             -msg.right_back_vel,
             msg.left_back_vel,
         ]
+
+    def joint_states_cb(self, msg: JointState):
+        """Republish simulated joint states the way the real rover's nodes do."""
+        self.drive_state_pub.publish(self._remap(msg, self.DRIVE_STATE_MAP))
+        self.corner_state_pub.publish(self._remap(msg, self.CORNER_STATE_MAP))
+
+    @staticmethod
+    def _remap(msg: JointState, mapping) -> JointState:
+        out = JointState()
+        out.header = msg.header
+        for i, joint in enumerate(msg.name):
+            if joint not in mapping:
+                continue
+            name, sign = mapping[joint]
+            out.name.append(name)
+            out.position.append(sign * msg.position[i] if i < len(msg.position) else 0.0)
+            out.velocity.append(sign * msg.velocity[i] if i < len(msg.velocity) else 0.0)
+        return out
 
     def ramp_cb(self):
         """Step each wheel speed toward its target by at most accel * dt."""
