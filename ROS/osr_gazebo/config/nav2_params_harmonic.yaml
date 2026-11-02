@@ -4,7 +4,8 @@
 #  - footprint: the rover's rectangle incl. wheels (instead of a 0.22 m circle)
 #  - inflation 0.55 m; velocity limits 0.4 m/s, 1 rad/s; gentler acceleration
 #  - progress checker allows 15 s (rotating in place doesn't count as progress)
-# Used together with slam_toolbox (slam:=true), which provides map and map->odom.
+# Used with slam_toolbox (slam:=true) or, with a saved map (map:=...), with
+# map_server + AMCL; either provides the map and the map -> odom transform.
 amcl:
   ros__parameters:
     alpha1: 0.2
@@ -20,7 +21,7 @@ amcl:
     global_frame_id: "map"
     lambda_short: 0.1
     laser_likelihood_max_dist: 2.0
-    laser_max_range: 100.0
+    laser_max_range: 12.0  # matches the simulated LiDAR
     laser_min_range: -1.0
     laser_model_type: "likelihood_field"
     max_beams: 60
@@ -44,6 +45,15 @@ amcl:
     z_rand: 0.5
     z_short: 0.05
     scan_topic: scan
+    # Start at the map origin: maps are made by driving from the spawn point,
+    # which slam_toolbox uses as the map origin. Use RViz "2D Pose Estimate"
+    # to correct it if the rover starts elsewhere.
+    set_initial_pose: true
+    initial_pose:
+      x: 0.0
+      y: 0.0
+      z: 0.0
+      yaw: 0.0
 
 bt_navigator:
   ros__parameters:

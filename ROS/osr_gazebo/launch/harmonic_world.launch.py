@@ -18,12 +18,15 @@ Build a map while driving:
   ros2 launch osr_gazebo harmonic_world.launch.py slam:=true
 Navigate to goals clicked in RViz (2D Goal Pose) while mapping:
   ros2 launch osr_gazebo harmonic_world.launch.py slam:=true nav2:=true
+or on a saved map (ros2 run nav2_map_server map_saver_cli -f ~/maps/room):
+  ros2 launch osr_gazebo harmonic_world.launch.py map:=$HOME/maps/room.yaml nav2:=true
 """
 from launch import LaunchDescription
 from launch.actions import DeclareLaunchArgument, IncludeLaunchDescription
 from launch.conditions import IfCondition
 from launch.launch_description_sources import PythonLaunchDescriptionSource
-from launch.substitutions import Command, LaunchConfiguration, PathJoinSubstitution
+from launch.substitutions import (Command, LaunchConfiguration, PathJoinSubstitution,
+                                  PythonExpression)
 from launch_ros.actions import Node
 from launch_ros.parameter_descriptions import ParameterValue
 from launch_ros.substitutions import FindPackageShare
@@ -160,6 +163,28 @@ def generate_launch_description():
         remappings=[('cmd_vel', 'cmd_vel_intuitive')],
     )
 
+    # Where the map comes from (exactly one source may publish map -> odom):
+    #  - map:=<saved map .yaml>  map_server loads it, AMCL localizes the rover on it
+    #  - slam:=true              slam_toolbox builds a new map while driving
+    # A saved map takes priority over slam:=true.
+    map_yaml = LaunchConfiguration('map')
+    use_saved_map = PythonExpression(["'", map_yaml, "' != ''"])
+    use_slam = PythonExpression(
+        ["'", LaunchConfiguration('slam'), "'.lower() == 'true' and '", map_yaml, "' == ''"])
+
+    localization = IncludeLaunchDescription(
+        PythonLaunchDescriptionSource(
+            PathJoinSubstitution([FindPackageShare('nav2_bringup'), 'launch', 'localization_launch.py'])),
+        launch_arguments={
+            'map': map_yaml,
+            'params_file': PathJoinSubstitution(
+                [FindPackageShare('osr_gazebo'), 'config', 'nav2_params_harmonic.yaml']),
+            'use_sim_time': 'true',
+            'autostart': 'true',
+        }.items(),
+        condition=IfCondition(use_saved_map),
+    )
+
     # Optional mapping: slam_toolbox builds /map from /scan and publishes map -> odom
     slam = IncludeLaunchDescription(
         PythonLaunchDescriptionSource(
@@ -169,7 +194,7 @@ def generate_launch_description():
                 [FindPackageShare('osr_gazebo'), 'config', 'slam_toolbox_harmonic.yaml']),
             'use_sim_time': 'true',
         }.items(),
-        condition=IfCondition(LaunchConfiguration('slam')),
+        condition=IfCondition(use_slam),
     )
 
     # Optional autonomous navigation: Nav2 plans a path to a goal (RViz "2D Goal
@@ -198,6 +223,8 @@ def generate_launch_description():
         DeclareLaunchArgument('slam', default_value='false',
                               description='Start slam_toolbox to build a map'),
         DeclareLaunchArgument('nav2', default_value='false',
-                              description='Start Nav2 (use with slam:=true)'),
-        rover, adapter, joy, teleop, slam, nav2,
+                              description='Start Nav2 (use with slam:=true or map:=...)'),
+        DeclareLaunchArgument('map', default_value='',
+                              description='Saved map .yaml: localize on it with AMCL instead of SLAM'),
+        rover, adapter, joy, teleop, slam, localization, nav2,
     ])
