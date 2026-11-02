@@ -16,6 +16,9 @@ In the other direction, the simulated joint states (/joint_states) are
 republished as drive_state and corner_state, with the names and sign
 conventions the RoboClaw and servo nodes use on the real rover, so rover.py's
 wheel odometry runs unchanged in simulation.
+
+Like the RoboClaw driver (velocity_timeout), the wheels stop if no drive
+command arrives for velocity_timeout seconds.
 """
 
 import rclpy
@@ -69,6 +72,10 @@ class GazeboCommandAdapter(Node):
         # 0 disables the ramp (commands pass straight through).
         self.declare_parameter('wheel_acceleration', 18.0)
         self.declare_parameter('ramp_rate', 50.0)  # Hz
+        # Stop the wheels if no drive command arrives for this long [s], like
+        # the RoboClaw driver's velocity_timeout on the real rover. 0 disables.
+        self.declare_parameter('velocity_timeout', 2.0)
+        self.last_drive_time = None
 
         n = len(self.WHEEL_JOINT_ORDER)
         self.wheel_target = [0.0] * n
@@ -96,6 +103,7 @@ class GazeboCommandAdapter(Node):
     def drive_cb(self, msg: CommandDrive):
         # Undo hardware right-side sign convention for Gazebo joint axes
         # Only store the target here; ramp_cb moves the wheels toward it
+        self.last_drive_time = self.get_clock().now()
         self.wheel_target = [
             -msg.right_middle_vel,
             msg.left_middle_vel,
@@ -125,6 +133,13 @@ class GazeboCommandAdapter(Node):
 
     def ramp_cb(self):
         """Step each wheel speed toward its target by at most accel * dt."""
+        timeout = self.get_parameter('velocity_timeout').get_parameter_value().double_value
+        if timeout > 0.0 and self.last_drive_time is not None:
+            age = (self.get_clock().now() - self.last_drive_time).nanoseconds / 1e9
+            if age > timeout and any(self.wheel_target):
+                self.get_logger().info(
+                    f'No drive command for {timeout:.1f} s, stopping', throttle_duration_sec=5.0)
+                self.wheel_target = [0.0] * len(self.wheel_target)
         accel = self.get_parameter('wheel_acceleration').get_parameter_value().double_value
         if accel <= 0.0:
             self.wheel_current = list(self.wheel_target)
