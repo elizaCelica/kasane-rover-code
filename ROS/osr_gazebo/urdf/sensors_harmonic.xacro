@@ -68,6 +68,20 @@
             <update_rate>100</update_rate>
             <topic>imu</topic>
             <gz_frame_id>imu_link</gz_frame_id>
+            <!-- Noise in the range of a decent hobby IMU, so the sim isn't
+                 better than the real thing: gyro ~0.1 deg/s, accel ~0.02 m/s^2 -->
+            <imu>
+                <angular_velocity>
+                    <x><noise type="gaussian"><mean>0</mean><stddev>0.002</stddev></noise></x>
+                    <y><noise type="gaussian"><mean>0</mean><stddev>0.002</stddev></noise></y>
+                    <z><noise type="gaussian"><mean>0</mean><stddev>0.002</stddev></noise></z>
+                </angular_velocity>
+                <linear_acceleration>
+                    <x><noise type="gaussian"><mean>0</mean><stddev>0.02</stddev></noise></x>
+                    <y><noise type="gaussian"><mean>0</mean><stddev>0.02</stddev></noise></y>
+                    <z><noise type="gaussian"><mean>0</mean><stddev>0.02</stddev></noise></z>
+                </linear_acceleration>
+            </imu>
         </sensor>
     </gazebo>
 

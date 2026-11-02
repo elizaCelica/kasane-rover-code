@@ -1,0 +1,35 @@
+# robot_localization EKF: fuses wheel odometry with the IMU gyroscope into
+# /odometry/filtered and publishes the odom -> base_footprint transform
+# (rover.py stops publishing it when ekf:=true).
+#
+# Each *_config list picks which values to use from that source, in order:
+#   [x, y, z,  roll, pitch, yaw,  vx, vy, vz,  vroll, vpitch, vyaw,  ax, ay, az]
+ekf_filter_node:
+  ros__parameters:
+    frequency: 30.0
+    two_d_mode: true            # the rover drives on the ground plane
+    publish_tf: true
+
+    map_frame: map
+    odom_frame: odom
+    base_link_frame: base_footprint
+    world_frame: odom           # we estimate odom -> base; AMCL/SLAM handle map -> odom
+
+    # Wheels: forward speed, and sideways speed (always ~0: the rover doesn't
+    # slide). Not their turn rate: wheels scrub and slip when turning.
+    odom0: /odom
+    odom0_config: [false, false, false,
+                   false, false, false,
+                   true,  true,  false,
+                   false, false, false,
+                   false, false, false]
+
+    # IMU: turn rate from the gyroscope only. Its orientation isn't used, so a
+    # real IMU's magnetometer (easily confused by motors) never matters.
+    imu0: /imu
+    imu0_config: [false, false, false,
+                  false, false, false,
+                  false, false, false,
+                  false, false, true,
+                  false, false, false]
+    imu0_remove_gravitational_acceleration: true

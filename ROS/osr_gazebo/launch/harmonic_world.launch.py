@@ -112,7 +112,11 @@ def generate_launch_description():
                 # corner_state, republished by the adapter), attached to the
                 # URDF root so TF has one tree: odom -> base_footprint -> base_link
                 'enable_odometry': True,
-                'publish_transform': True,
+                # With the EKF on, it publishes odom -> base_footprint instead
+                'publish_transform': ParameterValue(
+                    PythonExpression(["'false' if '", LaunchConfiguration('ekf'),
+                                      "'.lower() == 'true' else 'true'"]),
+                    value_type=bool),
                 'odom_child_frame': 'base_footprint',
                 # Nav2 asks for in-place rotation as a zero-speed yaw command
                 'rotate_in_place_on_yaw': True,
@@ -212,6 +216,20 @@ def generate_launch_description():
         condition=IfCondition(LaunchConfiguration('nav2')),
     )
 
+    # EKF: fuses wheel speed with the IMU gyro for odometry that doesn't drift
+    # when the wheels slip while turning (see config/ekf_harmonic.yaml)
+    ekf = Node(
+        package='robot_localization',
+        executable='ekf_node',
+        name='ekf_filter_node',
+        output='screen',
+        parameters=[
+            PathJoinSubstitution([FindPackageShare('osr_gazebo'), 'config', 'ekf_harmonic.yaml']),
+            {'use_sim_time': True},
+        ],
+        condition=IfCondition(LaunchConfiguration('ekf')),
+    )
+
     # Optional RViz with the saved Harmonic layout, following simulation time.
     # Note: the layout opens from the install folder. To keep layout changes,
     # use File > Save Config As and save over the source copy in
@@ -242,5 +260,7 @@ def generate_launch_description():
                               description='Saved map .yaml: localize on it with AMCL instead of SLAM'),
         DeclareLaunchArgument('rviz', default_value='false',
                               description='Open RViz with rviz/harmonic.rviz'),
-        rover, adapter, joy, teleop, slam, localization, nav2, rviz,
+        DeclareLaunchArgument('ekf', default_value='true',
+                              description='Fuse wheel odometry with the IMU (robot_localization)'),
+        rover, adapter, ekf, joy, teleop, slam, localization, nav2, rviz,
     ])
