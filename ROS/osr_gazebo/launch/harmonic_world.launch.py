@@ -20,6 +20,7 @@ Navigate to goals clicked in RViz (2D Goal Pose) while mapping:
   ros2 launch osr_gazebo harmonic_world.launch.py slam:=true nav2:=true
 or on a saved map (ros2 run nav2_map_server map_saver_cli -f ~/maps/room):
   ros2 launch osr_gazebo harmonic_world.launch.py map:=$HOME/maps/room.yaml nav2:=true
+Add rviz:=true to any of these to open RViz with the saved layout.
 """
 from launch import LaunchDescription
 from launch.actions import DeclareLaunchArgument, IncludeLaunchDescription
@@ -211,6 +212,19 @@ def generate_launch_description():
         condition=IfCondition(LaunchConfiguration('nav2')),
     )
 
+    # Optional RViz with the saved Harmonic layout, following simulation time.
+    # Note: the layout opens from the install folder. To keep layout changes,
+    # use File > Save Config As and save over the source copy in
+    # ROS/osr_gazebo/rviz/harmonic.rviz, then rebuild.
+    rviz = Node(
+        package='rviz2',
+        executable='rviz2',
+        output='screen',
+        arguments=['-d', PathJoinSubstitution([FindPackageShare('osr_gazebo'), 'rviz', 'harmonic.rviz'])],
+        parameters=[{'use_sim_time': True}],
+        condition=IfCondition(LaunchConfiguration('rviz')),
+    )
+
     return LaunchDescription([
         DeclareLaunchArgument('joystick', default_value='false',
                               description='Start joy + teleop_twist_joy for a gamepad'),
@@ -226,5 +240,7 @@ def generate_launch_description():
                               description='Start Nav2 (use with slam:=true or map:=...)'),
         DeclareLaunchArgument('map', default_value='',
                               description='Saved map .yaml: localize on it with AMCL instead of SLAM'),
-        rover, adapter, joy, teleop, slam, localization, nav2,
+        DeclareLaunchArgument('rviz', default_value='false',
+                              description='Open RViz with rviz/harmonic.rviz'),
+        rover, adapter, joy, teleop, slam, localization, nav2, rviz,
     ])
