@@ -61,12 +61,21 @@ class Rover(Node):
 
         self.should_calculate_odom = self.get_parameter("enable_odometry").get_parameter_value().bool_value
         self.should_publish_transform = self.get_parameter("publish_transform").get_parameter_value().bool_value
+        # Frame the odometry moves. base_link on the hardware; in simulation the
+        # URDF's root is base_footprint, so odom must attach there instead
+        # (a frame can only have one parent in TF).
+        # Turn zero-speed yaw commands on cmd_vel into rotation in place (for Nav2).
+        # Off by default; cmd_vel_intuitive (joystick) is never affected.
+        self.rotate_in_place_on_yaw = self.declare_parameter(
+            "rotate_in_place_on_yaw", False).get_parameter_value().bool_value
+        self.odom_child_frame = self.declare_parameter(
+            "odom_child_frame", "base_link").get_parameter_value().string_value
         if self.should_calculate_odom:
             self.get_logger().info("Calculting wheel odometry and publishing to /odom topic")
             self.odometry = Odometry()
             self.odometry.header.stamp = self.get_clock().now().to_msg()
             self.odometry.header.frame_id = "odom"
-            self.odometry.child_frame_id = "base_link"
+            self.odometry.child_frame_id = self.odom_child_frame
             self.odometry.pose.pose.orientation.w = 1.
         self.curr_positions = {}
         self.curr_velocities = {}
@@ -129,8 +138,16 @@ class Rover(Node):
         # Spin in place when the sideways push clearly outweighs any forward/back drift.
         # (Upstream required linear.x to be exactly 0, but a thumb pushing the stick
         # sideways usually drifts up or down a bit, so rotation rarely triggered.)
-        if twist_msg.angular.y and abs(twist_msg.linear.x) < 0.5 * abs(twist_msg.angular.y):
-            corner_cmd, drive_cmd = self.kin.calculate_rotate_in_place_cmd(twist_msg.angular.y)
+        spin_rate = twist_msg.angular.y
+        # Navigation stacks (Nav2) ask for rotation in place as a yaw rate with zero
+        # forward speed. In the mathematically correct mode that would otherwise do
+        # nothing, so optionally turn it into a rotate-in-place command.
+        # Sign: a positive angular.y rotate command spins clockwise (negative yaw).
+        if (not spin_rate and not intuitive and self.rotate_in_place_on_yaw
+                and abs(twist_msg.linear.x) < 1e-3 and abs(twist_msg.angular.z) > 1e-3):
+            spin_rate = -twist_msg.angular.z
+        if spin_rate and abs(twist_msg.linear.x) < 0.5 * abs(spin_rate):
+            corner_cmd, drive_cmd = self.kin.calculate_rotate_in_place_cmd(spin_rate)
             corner_cmd_msg = self._to_corner_msg(corner_cmd)
             drive_cmd_msg = self._to_drive_msg(drive_cmd)
         else:
@@ -181,7 +198,7 @@ class Rover(Node):
             if self.should_publish_transform:
                 transform_msg = TransformStamped()
                 transform_msg.header.frame_id = "odom"
-                transform_msg.child_frame_id = "base_link"
+                transform_msg.child_frame_id = self.odom_child_frame
                 transform_msg.header.stamp = now.to_msg()
                 transform_msg.transform.translation.x = self.odometry.pose.pose.position.x
                 transform_msg.transform.translation.y = self.odometry.pose.pose.position.y
@@ -229,25 +246,29 @@ class Rover(Node):
 
         if math.isnan(approx_turning_radius):
             approx_turning_radius = self.max_radius
+        # Corners (nearly) straight: tiny angles of mixed sign (sensor noise, servo
+        # jitter) would otherwise give huge radii of opposite signs whose average
+        # can land near zero and fake a sharp turn.
+        if max(abs(theta_fl), abs(theta_fr), abs(theta_bl), abs(theta_br)) < 0.01:
+            approx_turning_radius = self.max_radius
         self.get_logger().debug(
             "Current approximate turning radius: {}".format(round(approx_turning_radius, 2)),
             throttle_duration_sec=1)
         self.curr_turning_radius = approx_turning_radius
 
-        drive_angular_velocity = (
-            self.curr_velocities['drive_left_middle'] + self.curr_velocities['drive_right_middle']) / 2.
-        self.curr_twist.twist.linear.x = drive_angular_velocity * self.wheel_radius
-        try:
-            self.curr_twist.twist.angular.z = self.curr_twist.twist.linear.x / self.curr_turning_radius
-        except ZeroDivisionError:
-            self.curr_twist.twist.linear.x = 0.0
-            drive_angular_velocity = (
-                self.curr_velocities['drive_left_middle'] - self.curr_velocities['drive_right_middle']) / 2.0
-            self.curr_twist.twist.angular.z = drive_angular_velocity * self.wheel_radius / self.d4
-            self.get_logger().debug(
-                f"Turn-in-place detected. Angular velocity: {self.curr_twist.twist.angular.z}",
-                throttle_duration_sec=1)
-
+        # Body twist from the two middle wheels. They don't steer and sit at
+        # +/- d4 from the centerline, so they behave like a differential drive:
+        #   v = (right + left) / 2,   w = (right - left) / (2 * d4)
+        # This holds for straight driving, arcs (kinematics gives them speeds
+        # (R -/+ d4) * w) and turning in place alike, without dividing by an
+        # estimated turning radius, which is unstable near straight and near zero.
+        # Drive velocities use the motor convention, where the right-side motors are
+        # mirrored: negative means rolling forward (see kinematics.calculate_drive_velocities).
+        # Flip the right side so both sides are positive when the rover moves forward.
+        left_middle_vel = self.curr_velocities['drive_left_middle'] * self.wheel_radius
+        right_middle_vel = -self.curr_velocities['drive_right_middle'] * self.wheel_radius
+        self.curr_twist.twist.linear.x = (left_middle_vel + right_middle_vel) / 2.0
+        self.curr_twist.twist.angular.z = (right_middle_vel - left_middle_vel) / (2.0 * self.d4)
 
 def main(args=None):
     rclpy.init(args=args)
