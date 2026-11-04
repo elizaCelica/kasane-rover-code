@@ -21,6 +21,8 @@ Navigate to goals clicked in RViz (2D Goal Pose) while mapping:
 or on a saved map (ros2 run nav2_map_server map_saver_cli -f ~/maps/room):
   ros2 launch osr_gazebo harmonic_world.launch.py map:=$HOME/maps/room.yaml nav2:=true
 Add rviz:=true to any of these to open RViz with the saved layout.
+Try the LiDAR at another height above the floor (meters; default 0.737 = 29 in):
+  ros2 launch osr_gazebo harmonic_world.launch.py lidar_height:=0.40
 Use the detailed CAD meshes for collisions instead of simple shapes (much slower):
   ros2 launch osr_gazebo harmonic_world.launch.py collision:=mesh
 """
@@ -41,7 +43,8 @@ def generate_launch_description():
     # collision shape fidelity (collision:=simple by default, collision:=mesh for CAD meshes)
     robot_description = ParameterValue(
         Command(['xacro ', xacro_file, ' sim:=harmonic collision:=',
-                 LaunchConfiguration('collision')]), value_type=str)
+                 LaunchConfiguration('collision'),
+                 ' lidar_height:=', LaunchConfiguration('lidar_height')]), value_type=str)
 
     # Gazebo Harmonic; -r starts the physics running. The default world is a
     # walled test room that also loads the Sensors/Imu systems the LiDAR and
@@ -255,6 +258,9 @@ def generate_launch_description():
             default_value=PathJoinSubstitution(
                 [FindPackageShare('osr_gazebo'), 'worlds', 'test_room.sdf']),
             description='World file to load (path, or a Gazebo built-in like empty.sdf)'),
+        DeclareLaunchArgument('lidar_height', default_value='0.737',
+                              description='LiDAR scan height above the floor in meters '
+                                          '(0.737 = 29 in, the Kasane mast)'),
         DeclareLaunchArgument('collision', default_value='simple',
                               choices=['simple', 'mesh'],
                               description='Collision shapes: simple (cylinders and a box, full '

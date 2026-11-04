@@ -2,31 +2,83 @@
 <!-- Simulated sensors for Gazebo Harmonic: a 2D LiDAR on top of the body and an
      IMU at the body center. The world must load the Sensors and Imu systems
      (see worlds/test_room.sdf) or these produce no data.
-     Sensor settings follow the Zyldras/osr-code fork (RPLIDAR-like LiDAR). -->
+     LiDAR settings follow the RPLIDAR C1 datasheet (360 deg, 10 Hz, 0.05-12 m);
+     the original sensor setup was based on the Zyldras/osr-code fork. -->
 <robot xmlns:xacro="http://www.ros.org/wiki/xacro">
 
     <material name="red">
         <color rgba="0.8 0.1 0.1 1.0"/>
     </material>
 
-    <!-- LiDAR mount: 10 cm forward of the body center, 12 cm above it, so the
-         scan plane clears the body and rocker-bogie -->
+    <!-- Kasane layout: the LiDAR (RPLIDAR C1) sits on a mast at the front of a deck
+         that rides on 2 in risers above the body. Heights are measured from the floor,
+         like on the real rover, and converted to base_link (the body origin, which
+         rests base_link_height above the floor in this sim).
+         lidar_height is a launch option so other heights can be compared. -->
+    <xacro:arg name="lidar_height" default="0.737"/>             <!-- 29 in -->
+    <xacro:property name="lidar_height" value="$(arg lidar_height)"/>
+    <xacro:property name="base_link_height" value="0.274"/>      <!-- at rest, sim wheels -->
+    <xacro:property name="lidar_x" value="0.15"/>                <!-- mast, forward of center -->
+    <xacro:property name="deck_height" value="0.387"/>           <!-- deck top: 13 in body + 2 in risers + 1/4 in plate -->
+    <xacro:property name="deck_size_x" value="0.337"/>           <!-- 13.25 in -->
+    <xacro:property name="deck_size_y" value="0.254"/>           <!-- 10 in -->
+    <xacro:property name="deck_thickness" value="0.006"/>
+    <xacro:property name="c1_radius" value="0.028"/>             <!-- RPLIDAR C1: 55.6 mm across -->
+    <xacro:property name="c1_height" value="0.041"/>
+    <xacro:property name="mast_bottom" value="${deck_height}"/>
+    <xacro:property name="mast_top" value="${lidar_height - c1_height / 2}"/>
+
+    <!-- Deck and mast: visual only (on flat ground nothing touches them). The tiny
+         inertials keep the URDF-to-SDF converter from dropping the links. -->
+    <joint name="deck_joint" type="fixed">
+        <parent link="base_link"/>
+        <child link="deck"/>
+        <origin xyz="0 0 ${deck_height - deck_thickness / 2 - base_link_height}" rpy="0 0 0"/>
+    </joint>
+    <link name="deck">
+        <visual>
+            <geometry><box size="${deck_size_x} ${deck_size_y} ${deck_thickness}"/></geometry>
+            <material name="silver"/>
+        </visual>
+        <inertial>
+            <mass value="0.01"/>
+            <inertia ixx="1e-6" ixy="0" ixz="0" iyy="1e-6" iyz="0" izz="1e-6"/>
+        </inertial>
+    </link>
+    <xacro:if value="${mast_top > mast_bottom}">
+        <joint name="mast_joint" type="fixed">
+            <parent link="base_link"/>
+            <child link="mast"/>
+            <origin xyz="${lidar_x} 0 ${(mast_bottom + mast_top) / 2 - base_link_height}" rpy="0 0 0"/>
+        </joint>
+        <link name="mast">
+            <visual>
+                <geometry><box size="0.024 0.024 ${mast_top - mast_bottom}"/></geometry>
+                <material name="silver"/>
+            </visual>
+            <inertial>
+                <mass value="0.01"/>
+                <inertia ixx="1e-6" ixy="0" ixz="0" iyy="1e-6" iyz="0" izz="1e-6"/>
+            </inertial>
+        </link>
+    </xacro:if>
+
     <joint name="laser_joint" type="fixed">
         <parent link="base_link"/>
         <child link="laser"/>
-        <origin xyz="0.10 0 0.12" rpy="0 0 0"/>
+        <origin xyz="${lidar_x} 0 ${lidar_height - base_link_height}" rpy="0 0 0"/>
     </joint>
 
     <link name="laser">
         <visual>
             <geometry>
-                <cylinder radius="0.035" length="0.04"/>
+                <cylinder radius="${c1_radius}" length="${c1_height}"/>
             </geometry>
             <material name="red"/>
         </visual>
         <inertial>
-            <mass value="0.1"/>
-            <inertia ixx="4.4e-5" ixy="0" ixz="0" iyy="4.4e-5" iyz="0" izz="6.1e-5"/>
+            <mass value="0.11"/>
+            <inertia ixx="3.7e-5" ixy="0" ixz="0" iyy="3.7e-5" iyz="0" izz="4.3e-5"/>
         </inertial>
     </link>
 
@@ -41,21 +93,21 @@
             <lidar>
                 <scan>
                     <horizontal>
-                        <samples>360</samples>
+                        <samples>500</samples>  <!-- C1: 5 kHz sampling at 10 Hz = 0.72 deg -->
                         <resolution>1</resolution>
                         <min_angle>-3.14159</min_angle>
                         <max_angle>3.14159</max_angle>
                     </horizontal>
                 </scan>
                 <range>
-                    <min>0.3</min>
+                    <min>0.05</min>
                     <max>12.0</max>
                     <resolution>0.01</resolution>
                 </range>
                 <noise>
                     <type>gaussian</type>
                     <mean>0.0</mean>
-                    <stddev>0.01</stddev>
+                    <stddev>0.015</stddev>  <!-- C1 accuracy is about +/-30 mm -->
                 </noise>
             </lidar>
         </sensor>

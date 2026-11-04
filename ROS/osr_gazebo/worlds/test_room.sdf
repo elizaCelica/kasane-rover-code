@@ -46,17 +46,17 @@
       <static>true</static>
       <link name="link">
         <!-- north / south / east / west walls, 6 m long, 0.1 m thick, 0.5 m high -->
-        <collision name="north_c"><pose>3.05 0 0.25 0 0 0</pose><geometry><box><size>0.1 6.2 0.5</size></box></geometry></collision>
-        <visual name="north_v"><pose>3.05 0 0.25 0 0 0</pose><geometry><box><size>0.1 6.2 0.5</size></box></geometry></visual>
-        <collision name="south_c"><pose>-3.05 0 0.25 0 0 0</pose><geometry><box><size>0.1 6.2 0.5</size></box></geometry></collision>
-        <visual name="south_v"><pose>-3.05 0 0.25 0 0 0</pose><geometry><box><size>0.1 6.2 0.5</size></box></geometry></visual>
-        <collision name="east_c"><pose>0 -3.05 0.25 0 0 0</pose><geometry><box><size>6.2 0.1 0.5</size></box></geometry></collision>
-        <visual name="east_v"><pose>0 -3.05 0.25 0 0 0</pose><geometry><box><size>6.2 0.1 0.5</size></box></geometry></visual>
-        <collision name="west_c"><pose>0 3.05 0.25 0 0 0</pose><geometry><box><size>6.2 0.1 0.5</size></box></geometry></collision>
-        <visual name="west_v"><pose>0 3.05 0.25 0 0 0</pose><geometry><box><size>6.2 0.1 0.5</size></box></geometry></visual>
+        <collision name="north_c"><pose>3.05 0 1.2 0 0 0</pose><geometry><box><size>0.1 6.2 2.4</size></box></geometry></collision>
+        <visual name="north_v"><pose>3.05 0 1.2 0 0 0</pose><geometry><box><size>0.1 6.2 2.4</size></box></geometry></visual>
+        <collision name="south_c"><pose>-3.05 0 1.2 0 0 0</pose><geometry><box><size>0.1 6.2 2.4</size></box></geometry></collision>
+        <visual name="south_v"><pose>-3.05 0 1.2 0 0 0</pose><geometry><box><size>0.1 6.2 2.4</size></box></geometry></visual>
+        <collision name="east_c"><pose>0 -3.05 1.2 0 0 0</pose><geometry><box><size>6.2 0.1 2.4</size></box></geometry></collision>
+        <visual name="east_v"><pose>0 -3.05 1.2 0 0 0</pose><geometry><box><size>6.2 0.1 2.4</size></box></geometry></visual>
+        <collision name="west_c"><pose>0 3.05 1.2 0 0 0</pose><geometry><box><size>6.2 0.1 2.4</size></box></geometry></collision>
+        <visual name="west_v"><pose>0 3.05 1.2 0 0 0</pose><geometry><box><size>6.2 0.1 2.4</size></box></geometry></visual>
         <!-- inner partition wall, leaving gaps at both ends -->
-        <collision name="partition_c"><pose>0.8 -0.5 0.25 0 0 0</pose><geometry><box><size>0.1 3.0 0.5</size></box></geometry></collision>
-        <visual name="partition_v"><pose>0.8 -0.5 0.25 0 0 0</pose><geometry><box><size>0.1 3.0 0.5</size></box></geometry></visual>
+        <collision name="partition_c"><pose>0.8 -0.5 0.6 0 0 0</pose><geometry><box><size>0.1 3.0 1.2</size></box></geometry></collision>
+        <visual name="partition_v"><pose>0.8 -0.5 0.6 0 0 0</pose><geometry><box><size>0.1 3.0 1.2</size></box></geometry></visual>
       </link>
     </model>
 
@@ -74,13 +74,37 @@
 
     <model name="pillar">
       <static>true</static>
-      <pose>2.0 1.8 0.25 0 0 0</pose>
+      <pose>2.0 1.8 1.2 0 0 0</pose>
       <link name="link">
-        <collision name="c"><geometry><cylinder><radius>0.2</radius><length>0.5</length></cylinder></geometry></collision>
+        <collision name="c"><geometry><cylinder><radius>0.2</radius><length>2.4</length></cylinder></geometry></collision>
         <visual name="v">
-          <geometry><cylinder><radius>0.2</radius><length>0.5</length></cylinder></geometry>
+          <geometry><cylinder><radius>0.2</radius><length>2.4</length></cylinder></geometry>
           <material><ambient>0.2 0.3 0.7 1</ambient><diffuse>0.2 0.3 0.7 1</diffuse></material>
         </visual>
+      </link>
+    </model>
+
+    <!-- Table: 30 in (0.76 m) top on four legs. A LiDAR scanning below the top only
+         sees the legs; one at the top's height sees its edge. -->
+    <model name="table">
+      <static>true</static>
+      <pose>-1.6 -1.6 0 0 0 0</pose>
+      <link name="link">
+        <collision name="top_c"><pose>0 0 0.745 0 0 0</pose><geometry><box><size>1.0 0.6 0.03</size></box></geometry></collision>
+        <visual name="top_v"><pose>0 0 0.745 0 0 0</pose><geometry><box><size>1.0 0.6 0.03</size></box></geometry>
+          <material><ambient>0.5 0.35 0.2 1</ambient><diffuse>0.5 0.35 0.2 1</diffuse></material></visual>
+        <collision name="leg0_c"><pose>0.46 0.26 0.365 0 0 0</pose><geometry><box><size>0.04 0.04 0.73</size></box></geometry></collision>
+        <visual name="leg0_v"><pose>0.46 0.26 0.365 0 0 0</pose><geometry><box><size>0.04 0.04 0.73</size></box></geometry>
+          <material><ambient>0.5 0.35 0.2 1</ambient><diffuse>0.5 0.35 0.2 1</diffuse></material></visual>
+        <collision name="leg1_c"><pose>0.46 -0.26 0.365 0 0 0</pose><geometry><box><size>0.04 0.04 0.73</size></box></geometry></collision>
+        <visual name="leg1_v"><pose>0.46 -0.26 0.365 0 0 0</pose><geometry><box><size>0.04 0.04 0.73</size></box></geometry>
+          <material><ambient>0.5 0.35 0.2 1</ambient><diffuse>0.5 0.35 0.2 1</diffuse></material></visual>
+        <collision name="leg2_c"><pose>-0.46 0.26 0.365 0 0 0</pose><geometry><box><size>0.04 0.04 0.73</size></box></geometry></collision>
+        <visual name="leg2_v"><pose>-0.46 0.26 0.365 0 0 0</pose><geometry><box><size>0.04 0.04 0.73</size></box></geometry>
+          <material><ambient>0.5 0.35 0.2 1</ambient><diffuse>0.5 0.35 0.2 1</diffuse></material></visual>
+        <collision name="leg3_c"><pose>-0.46 -0.26 0.365 0 0 0</pose><geometry><box><size>0.04 0.04 0.73</size></box></geometry></collision>
+        <visual name="leg3_v"><pose>-0.46 -0.26 0.365 0 0 0</pose><geometry><box><size>0.04 0.04 0.73</size></box></geometry>
+          <material><ambient>0.5 0.35 0.2 1</ambient><diffuse>0.5 0.35 0.2 1</diffuse></material></visual>
       </link>
     </model>
   </world>

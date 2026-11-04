@@ -75,7 +75,7 @@ Check the controllers with `ros2 control list_controllers`.
 
 ### Sensors and worlds
 
-The Harmonic model carries a 2D LiDAR (`/scan`, frame `laser`, 360 samples, 10 Hz, 0.3–12 m) and an IMU (`/imu`, frame `imu_link`, 100 Hz), defined in `urdf/sensors_harmonic.xacro`. The default world, `worlds/test_room.sdf`, is a 6 m × 6 m walled room with a few obstacles. Any world must load the `Sensors` and `Imu` systems for the sensors to publish. Choose another world with `world:=<path>`.
+The Harmonic model carries a 2D LiDAR matching the RPLIDAR C1 (`/scan`, frame `laser`, 500 samples, 10 Hz, 0.05–12 m) and an IMU (`/imu`, frame `imu_link`, 100 Hz), defined in `urdf/sensors_harmonic.xacro`. The LiDAR sits on a mast at the front of the Kasane deck, scanning 0.737 m (29 in) above the floor; compare other heights with `lidar_height:=<meters>`. A 2D LiDAR only sees what crosses its scan plane, so lower obstacles are invisible to it. The default world, `worlds/test_room.sdf`, is a 6 m × 6 m room with 2.4 m walls, a 1.2 m half-wall partition, a pillar, a 0.76 m table, and a 0.5 m crate (below the default scan height). Any world must load the `Sensors` and `Imu` systems for the sensors to publish. Choose another world with `world:=<path>`.
 
 ### Troubleshooting
 
