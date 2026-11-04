@@ -28,8 +28,9 @@
     <xacro:property name="mast_bottom" value="${deck_height}"/>
     <xacro:property name="mast_top" value="${lidar_height - c1_height / 2}"/>
 
-    <!-- Deck and mast: visual only (on flat ground nothing touches them). The tiny
-         inertials keep the URDF-to-SDF converter from dropping the links. -->
+    <!-- Deck and mast. They collide like the real parts, so the sim rover catches its
+         mast under a table just as the real one would. The tiny inertials keep the
+         URDF-to-SDF converter from dropping the links. -->
     <joint name="deck_joint" type="fixed">
         <parent link="base_link"/>
         <child link="deck"/>
@@ -40,6 +41,9 @@
             <geometry><box size="${deck_size_x} ${deck_size_y} ${deck_thickness}"/></geometry>
             <material name="silver"/>
         </visual>
+        <collision>
+            <geometry><box size="${deck_size_x} ${deck_size_y} ${deck_thickness}"/></geometry>
+        </collision>
         <inertial>
             <mass value="0.01"/>
             <inertia ixx="1e-6" ixy="0" ixz="0" iyy="1e-6" iyz="0" izz="1e-6"/>
@@ -56,6 +60,9 @@
                 <geometry><box size="0.024 0.024 ${mast_top - mast_bottom}"/></geometry>
                 <material name="silver"/>
             </visual>
+            <collision>
+                <geometry><box size="0.024 0.024 ${mast_top - mast_bottom}"/></geometry>
+            </collision>
             <inertial>
                 <mass value="0.01"/>
                 <inertia ixx="1e-6" ixy="0" ixz="0" iyy="1e-6" iyz="0" izz="1e-6"/>
@@ -76,6 +83,11 @@
             </geometry>
             <material name="red"/>
         </visual>
+        <collision>
+            <geometry>
+                <cylinder radius="${c1_radius}" length="${c1_height}"/>
+            </geometry>
+        </collision>
         <inertial>
             <mass value="0.11"/>
             <inertia ixx="3.7e-5" ixy="0" ixz="0" iyy="3.7e-5" iyz="0" izz="4.3e-5"/>
